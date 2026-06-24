@@ -65,16 +65,15 @@
   },
   {
     "id": 5,
-    "nome": "BA — Construção",
-    "regiao": "Nordeste",
-    "estado": "BA",
+    "nome": "Comerciários - Açougues",
+    "regiao": "Sudeste",
+    "estado": "SP",
     "cnaes": [
-      "4120400"
+      "4722901"
     ],
     "municipios": [
-      "290570",
-      "292740"
+      "355030"
     ],
-    "status": "error"
+    "status": "idle"
   }
 ]

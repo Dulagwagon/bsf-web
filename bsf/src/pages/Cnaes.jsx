@@ -14,7 +14,7 @@ const SECOES = [
   { value: 'D', label: 'D — Eletricidade e gás' },
   { value: 'E', label: 'E — Água, esgoto, gestão de resíduos' },
   { value: 'F', label: 'F — Construção' },
-  { value: 'G', label: 'G — Comércio, reparação de veículos' },
+  { value: 'G', label: 'G — Comércio' },
   { value: 'H', label: 'H — Transporte, armazenagem e correio' },
   { value: 'I', label: 'I — Alojamento e alimentação' },
   { value: 'J', label: 'J — Informação e comunicação' },

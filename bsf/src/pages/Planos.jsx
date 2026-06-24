@@ -1,5 +1,6 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import styles from './Planos.module.css';
+import { planosApi } from '../api/planos';
 
 /* ─── helpers ────────────────────────────────────────────── */
 const IBGE6_RE = /^\d{6}$/;
@@ -18,14 +19,6 @@ const normalizeIbge = (raw) => {
 const parseTokens = (text) =>
   text.split(/[\n,;]+/).map(t => t.trim()).filter(Boolean);
 
-const PLANOS_INICIAIS = [
-  { id: 1, nome: 'SP — Tecnologia',  regiao: 'Sudeste',  estado: 'SP', cnaes: ['6201501','6311900'],  municipios: ['355030','350950','354890'], status: 'done'  },
-  { id: 2, nome: 'RJ — Varejo',      regiao: 'Sudeste',  estado: 'RJ', cnaes: ['4711301','4712100'],  municipios: ['330455','330490','330227'], status: 'done'  },
-  { id: 3, nome: 'MG — Indústria',   regiao: 'Sudeste',  estado: 'MG', cnaes: ['2821601','2941700'],  municipios: ['310620','316700','313670'], status: 'done'  },
-  { id: 4, nome: 'PR — Agronegócio', regiao: 'Sul',      estado: 'PR', cnaes: ['0111301','0112101'],  municipios: ['410690','410480','411520'], status: 'idle'  },
-  { id: 5, nome: 'BA — Construção',  regiao: 'Nordeste', estado: 'BA', cnaes: ['4120400'],             municipios: ['290570','292740'],         status: 'error' },
-];
-
 const STATUS_META = {
   done:    { label: 'Concluído',  cls: 'done'    },
   idle:    { label: 'Aguardando', cls: 'idle'    },
@@ -35,7 +28,6 @@ const STATUS_META = {
 
 const REGIOES   = ['Norte','Nordeste','Centro-Oeste','Sudeste','Sul'];
 const EMPTY_FORM = { nome: '', regiao: '', estado: '', cnaes: [], municipios: [] };
-const nextId = (list) => Math.max(0, ...list.map(p => p.id)) + 1;
 
 /* ─── tag input ──────────────────────────────────────────── */
 function TagInput({ tags, onAdd, onRemove, placeholder, validate, normalize, hint }) {
@@ -100,22 +92,34 @@ function TagInput({ tags, onAdd, onRemove, placeholder, validate, normalize, hin
 }
 
 /* ─── confirm modal ──────────────────────────────────────── */
-function ConfirmModal({ message, onConfirm, onCancel }) {
+function ConfirmModal({ message, onConfirm, onCancel, loading }) {
   return (
     <div className={styles.modalOverlay} role="dialog" aria-modal="true">
       <div className={styles.modal}>
         <div className={styles.modalIcon}><i className="ti ti-alert-triangle" aria-hidden="true" /></div>
         <p className={styles.modalMsg}>{message}</p>
         <div className={styles.modalActions}>
-          <button className={styles.modalCancel} onClick={onCancel}>Cancelar</button>
-          <button className={styles.modalConfirm} onClick={onConfirm}>Excluir</button>
+          <button className={styles.modalCancel} onClick={onCancel} disabled={loading}>Cancelar</button>
+          <button className={styles.modalConfirm} onClick={onConfirm} disabled={loading}>
+            {loading ? 'Excluindo...' : 'Excluir'}
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-/* ─── export helpers ─────────────────────────────────────── */
+/* ─── toast ──────────────────────────────────────────────── */
+function Toast({ message, type = 'success' }) {
+  return (
+    <div className={`${styles.toast} ${styles['toast_' + type]}`}>
+      <i className={`ti ${type === 'success' ? 'ti-check' : 'ti-alert-triangle'}`} aria-hidden="true" />
+      {message}
+    </div>
+  );
+}
+
+/* ─── export (download local) ───────────────────────────── */
 const exportJSON = (planos) => {
   const data = JSON.stringify(planos, null, 2);
   const blob = new Blob([data], { type: 'application/json' });
@@ -127,13 +131,39 @@ const exportJSON = (planos) => {
 
 /* ─── main ───────────────────────────────────────────────── */
 export default function Planos() {
-  const [planos, setPlanos]             = useState(PLANOS_INICIAIS);
+  const [planos, setPlanos]             = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [loadError, setLoadError]       = useState('');
   const [search, setSearch]             = useState('');
   const [selectedId, setSelectedId]     = useState(null);
   const [form, setForm]                 = useState(EMPTY_FORM);
   const [isNew, setIsNew]               = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [saved, setSaved]               = useState(false);
+  const [deleting, setDeleting]         = useState(false);
+  const [saving, setSaving]             = useState(false);
+  const [error, setError]               = useState('');
+  const [toast, setToast]               = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 2500);
+  };
+
+  /* ── carregar do backend ── */
+  const loadPlanos = useCallback(async () => {
+    setLoading(true);
+    setLoadError('');
+    try {
+      const data = await planosApi.list();
+      setPlanos(data);
+    } catch (e) {
+      setLoadError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadPlanos(); }, [loadPlanos]);
 
   const filtered = useMemo(() =>
     planos.filter(p => p.nome.toLowerCase().includes(search.toLowerCase())),
@@ -144,18 +174,24 @@ export default function Planos() {
     setSelectedId(plano.id);
     setIsNew(false);
     setForm({ nome: plano.nome, regiao: plano.regiao, estado: plano.estado, cnaes: [...plano.cnaes], municipios: [...plano.municipios] });
-    setSaved(false);
+    setError('');
   };
 
   const openNew = () => {
     setSelectedId(null);
     setIsNew(true);
     setForm(EMPTY_FORM);
-    setSaved(false);
+    setError('');
   };
 
-  const handleSave = () => {
-    if (!form.nome.trim()) return;
+  const closeForm = () => { setSelectedId(null); setIsNew(false); setError(''); };
+
+  const handleSave = async () => {
+    if (!form.nome.trim()) {
+      setError('Nome do plano é obrigatório.');
+      return;
+    }
+
     const payload = {
       nome:       form.nome.trim(),
       regiao:     form.regiao,
@@ -164,23 +200,45 @@ export default function Planos() {
       municipios: form.municipios,
       status:     'idle',
     };
-    if (isNew) {
-      const novo = { id: nextId(planos), ...payload };
-      setPlanos(prev => [...prev, novo]);
-      setSelectedId(novo.id);
-      setIsNew(false);
-    } else {
-      setPlanos(prev => prev.map(p => p.id === selectedId ? { ...p, ...payload } : p));
+
+    setSaving(true);
+    setError('');
+
+    try {
+      if (isNew) {
+        const novo = await planosApi.create(payload);
+        setPlanos(prev => [...prev, novo]);
+        setSelectedId(novo.id);
+        setIsNew(false);
+        showToast(`Plano "${novo.nome}" criado e salvo`);
+      } else {
+        const atualizado = await planosApi.update(selectedId, payload);
+        setPlanos(prev => prev.map(p => p.id === selectedId ? atualizado : p));
+        showToast(`Plano "${atualizado.nome}" atualizado e salvo`);
+      }
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
     }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
   };
 
   const confirmDelete = (id) => setDeleteTarget(id);
-  const handleDelete = () => {
-    setPlanos(prev => prev.filter(p => p.id !== deleteTarget));
-    if (selectedId === deleteTarget || isNew) { setSelectedId(null); setIsNew(false); }
-    setDeleteTarget(null);
+
+  const handleDelete = async () => {
+    const plano = planos.find(p => p.id === deleteTarget);
+    setDeleting(true);
+    try {
+      await planosApi.remove(deleteTarget);
+      setPlanos(prev => prev.filter(p => p.id !== deleteTarget));
+      if (selectedId === deleteTarget || isNew) closeForm();
+      if (plano) showToast(`Plano "${plano.nome}" removido`, 'error');
+    } catch (e) {
+      showToast(e.message, 'error');
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
+    }
   };
 
   const addTags  = (field, vals) => setForm(f => ({ ...f, [field]: [...f[field], ...vals] }));
@@ -226,12 +284,25 @@ export default function Planos() {
           </div>
 
           <div className={styles.listCount}>
-            {filtered.length} plano{filtered.length !== 1 ? 's' : ''}
-            {search && ` para "${search}"`}
+            {loading ? 'Carregando...' : `${filtered.length} plano${filtered.length !== 1 ? 's' : ''}`}
+            {!loading && search && ` para "${search}"`}
           </div>
 
           <div className={styles.list}>
-            {filtered.length === 0 ? (
+            {loadError ? (
+              <div className={styles.listEmpty}>
+                <i className="ti ti-plug-connected-x" aria-hidden="true" />
+                <span>{loadError}</span>
+                <button className={styles.btnCancel} onClick={loadPlanos} style={{ marginTop: 8 }}>
+                  <i className="ti ti-refresh" aria-hidden="true" /> Tentar novamente
+                </button>
+              </div>
+            ) : loading ? (
+              <div className={styles.listEmpty}>
+                <i className="ti ti-loader-2" aria-hidden="true" />
+                <span>Carregando planos...</span>
+              </div>
+            ) : filtered.length === 0 ? (
               <div className={styles.listEmpty}>
                 <i className="ti ti-file-off" aria-hidden="true" />
                 <span>Nenhum plano encontrado</span>
@@ -288,11 +359,6 @@ export default function Planos() {
                   <span className={styles.formCardLabel}>{isNew ? 'Novo plano' : 'Editar plano'}</span>
                   <h2 className={styles.formCardTitle}>{form.nome || 'Sem nome'}</h2>
                 </div>
-                {saved && (
-                  <span className={styles.savedTag}>
-                    <i className="ti ti-check" aria-hidden="true" /> Salvo
-                  </span>
-                )}
               </div>
 
               {/* NOME */}
@@ -369,18 +435,24 @@ export default function Planos() {
                 />
               </div>
 
+              {error && (
+                <div className={styles.formError}>
+                  <i className="ti ti-alert-circle" aria-hidden="true" /> {error}
+                </div>
+              )}
+
               {/* FOOTER */}
               <div className={styles.formFooter}>
-                <button className={styles.btnCancel} onClick={() => { setSelectedId(null); setIsNew(false); }}>
+                <button className={styles.btnCancel} onClick={closeForm} disabled={saving}>
                   Cancelar
                 </button>
                 <button
                   className={`${styles.btnSave} ${!formValid ? styles.btnSaveDisabled : ''}`}
                   onClick={handleSave}
-                  disabled={!formValid}
+                  disabled={!formValid || saving}
                 >
-                  <i className="ti ti-device-floppy" aria-hidden="true" />
-                  {isNew ? 'Criar plano' : 'Salvar alterações'}
+                  <i className={`ti ${saving ? 'ti-loader-2' : 'ti-device-floppy'}`} aria-hidden="true" />
+                  {saving ? 'Salvando...' : (isNew ? 'Criar plano' : 'Salvar alterações')}
                 </button>
               </div>
             </div>
@@ -393,8 +465,11 @@ export default function Planos() {
           message={`Excluir o plano "${planos.find(p => p.id === deleteTarget)?.nome}"? Esta ação não pode ser desfeita.`}
           onConfirm={handleDelete}
           onCancel={() => setDeleteTarget(null)}
+          loading={deleting}
         />
       )}
+
+      {toast && <Toast message={toast.message} type={toast.type} />}
     </div>
   );
 }

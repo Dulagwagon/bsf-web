@@ -1,0 +1,15 @@
+[
+  {
+    "id": 5,
+    "codigo": "4712100",
+    "descricao": "Comércio varejista de mercadorias em geral, com predominância de produtos alimentícios — minimercados, mercearias e armazéns",
+    "secao": "G",
+    "divisao": "47"
+  },
+  {
+    "id": 14,
+    "codigo": "4722901",
+    "descricao": "Comércio varejista de carnes frescas",
+    "secao": "G"
+  }
+]

@@ -1,0 +1,92 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Outfit:wght@300;400;500;600&display=swap');
+
+/* ─── DARK THEME (default) ───────────────────────────────── */
+:root {
+  --bg-base:        #0a0c0f;
+  --bg-surface:     #0d0f12;
+  --bg-input:       #12151a;
+  --bg-hover:       #12151a;
+  --border:         #1a1d22;
+  --border-hover:   #2a2f38;
+
+  --gold:           #c4983e;
+  --gold-hover:     #d4a94f;
+  --gold-bg:        #141008;
+  --gold-border:    #2a2010;
+
+  --text-primary:   #e8e2d4;
+  --text-secondary: #8a8e99;
+  --text-muted:     #4a5060;
+  --text-dim:       #35393f;
+  --text-faint:     #2a2f38;
+
+  --green:          #3a9e5e;
+  --green-bg:       #0d1f14;
+  --red:            #9e3a3a;
+  --red-bg:         #1a0d0d;
+  --blue-accent:    #2a4a7e;
+
+  --shadow:         0 2px 12px rgba(0,0,0,0.4);
+}
+
+/* ─── LIGHT THEME ────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg-base:        #f0f1f3;
+  --bg-surface:     #e8e9ec;
+  --bg-input:       #ffffff;
+  --bg-hover:       #dfe0e4;
+  --border:         #d0d2d8;
+  --border-hover:   #b0b3bc;
+
+  --gold:           #a07828;
+  --gold-hover:     #b88a32;
+  --gold-bg:        #fdf6e8;
+  --gold-border:    #e8d4a0;
+
+  --text-primary:   #1a1c22;
+  --text-secondary: #3a3d48;
+  --text-muted:     #6a6e7c;
+  --text-dim:       #8a8e9c;
+  --text-faint:     #b0b3bc;
+
+  --green:          #2a7e4e;
+  --green-bg:       #e8f5ee;
+  --red:            #7e2a2a;
+  --red-bg:         #f5e8e8;
+  --blue-accent:    #2a5aae;
+
+  --shadow:         0 2px 12px rgba(0,0,0,0.08);
+}
+
+/* ─── TOKENS (tema-independentes) ───────────────────────── */
+:root {
+  --font-display: 'Cormorant Garamond', serif;
+  --font-ui:      'Outfit', sans-serif;
+  --radius-sm:    4px;
+  --radius-md:    6px;
+  --radius-lg:    8px;
+  --radius-xl:    14px;
+}
+
+/* ─── RESET ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  height: 100%;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.25s, color 0.25s;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font-family: var(--font-ui); cursor: pointer; }
+input, textarea, select { font-family: var(--font-ui); }
+
+/* ─── SCROLLBAR ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }

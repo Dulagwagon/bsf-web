@@ -1,0 +1,80 @@
+[
+  {
+    "id": 1,
+    "nome": "SP — Tecnologia",
+    "regiao": "Sudeste",
+    "estado": "SP",
+    "cnaes": [
+      "6201501",
+      "6311900"
+    ],
+    "municipios": [
+      "355030",
+      "350950",
+      "354890"
+    ],
+    "status": "done"
+  },
+  {
+    "id": 2,
+    "nome": "RJ — Varejo",
+    "regiao": "Sudeste",
+    "estado": "RJ",
+    "cnaes": [
+      "4711301",
+      "4712100"
+    ],
+    "municipios": [
+      "330455",
+      "330490",
+      "330227"
+    ],
+    "status": "done"
+  },
+  {
+    "id": 3,
+    "nome": "MG — Indústria",
+    "regiao": "Sudeste",
+    "estado": "MG",
+    "cnaes": [
+      "2821601",
+      "2941700"
+    ],
+    "municipios": [
+      "310620",
+      "316700",
+      "313670"
+    ],
+    "status": "done"
+  },
+  {
+    "id": 4,
+    "nome": "PR — Agronegócio",
+    "regiao": "Sul",
+    "estado": "PR",
+    "cnaes": [
+      "0111301",
+      "0112101"
+    ],
+    "municipios": [
+      "410690",
+      "410480",
+      "411520"
+    ],
+    "status": "idle"
+  },
+  {
+    "id": 5,
+    "nome": "BA — Construção",
+    "regiao": "Nordeste",
+    "estado": "BA",
+    "cnaes": [
+      "4120400"
+    ],
+    "municipios": [
+      "290570",
+      "292740"
+    ],
+    "status": "error"
+  }
+]

@@ -1,0 +1,420 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* ─── TOPBAR ─────────────────────────────────────────────── */
+.topbar {
+  height: 56px;
+  flex-shrink: 0;
+  background: var(--bg-base);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+}
+
+.topbarLeft { display: flex; flex-direction: column; }
+
+.topbarTitle {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.topbarDate {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+  text-transform: capitalize;
+}
+
+.topbarRight { display: flex; align-items: center; gap: 12px; }
+
+.runBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--gold);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--bg-base);
+  transition: background 0.2s;
+}
+.runBtn:hover { background: var(--gold-hover); }
+.runBtn i { font-size: 14px; }
+
+.iconBtn {
+  width: 32px; height: 32px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
+  font-size: 16px;
+  transition: color 0.15s, border-color 0.15s;
+  position: relative;
+}
+.iconBtn:hover { color: var(--gold); border-color: var(--gold); }
+
+.hasBadge::after {
+  content: '';
+  position: absolute;
+  top: 6px; right: 6px;
+  width: 6px; height: 6px;
+  background: var(--gold);
+  border-radius: 50%;
+  border: 1px solid var(--bg-base);
+}
+
+/* ─── CONTENT ────────────────────────────────────────────── */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ─── METRICS ────────────────────────────────────────────── */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.metric {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.metric:hover { border-color: var(--border-hover); }
+
+.metric::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+.gold::before  { background: var(--gold); }
+.green::before { background: var(--green); }
+.blue::before  { background: var(--blue-accent); }
+.muted::before { background: var(--border-hover); }
+
+.metricLabel {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.metricValue {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.metricSub { font-size: 11px; color: var(--text-dim); }
+
+.delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  margin-top: 4px;
+}
+.delta i { font-size: 10px; }
+.deltaUp   { background: var(--green-bg); color: var(--green); }
+.deltaDown { background: var(--red-bg);   color: var(--red);   }
+
+/* ─── CARDS ──────────────────────────────────────────────── */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.cardTitle {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.cardAction {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--gold);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.15s;
+}
+.cardAction:hover { opacity: 0.75; }
+.cardAction i { font-size: 12px; }
+
+.grid2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
+/* ─── PIPELINE ───────────────────────────────────────────── */
+.pipeList { display: flex; flex-direction: column; gap: 8px; }
+
+.pipeItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s;
+}
+.pipeItem:hover { border-color: var(--border-hover); }
+
+.dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dotRunning { background: var(--gold); box-shadow: 0 0 6px rgba(196,152,62,0.4); animation: pulse 1.5s infinite; }
+.dotDone    { background: var(--green); }
+.dotIdle    { background: var(--border-hover); }
+.dotError   { background: var(--red); }
+
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.pipeInfo { flex: 1; min-width: 0; }
+.pipeName { font-size: 13px; font-weight: 400; color: var(--text-secondary); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pipeMeta { font-size: 11px; color: var(--text-dim); }
+
+.progressBar { margin-top: 6px; height: 2px; background: var(--border); border-radius: 1px; overflow: hidden; }
+.progressFill { height: 100%; background: var(--gold); border-radius: 1px; transition: width 0.3s; }
+
+.badge {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.badgeRunning { background: #1e1508; color: var(--gold); }
+.badgeDone    { background: var(--green-bg); color: var(--green); }
+.badgeIdle    { background: var(--bg-input); color: var(--text-dim); }
+.badgeError   { background: var(--red-bg);   color: var(--red);   }
+
+/* ─── PLANS ──────────────────────────────────────────────── */
+.planList { display: flex; flex-direction: column; gap: 8px; }
+
+.planItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.planItem:hover { border-color: var(--border-hover); }
+
+.planIcon {
+  width: 30px; height: 30px;
+  border-radius: var(--radius-sm);
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
+.planInfo { flex: 1; min-width: 0; }
+.planName   { font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 2px; }
+.planDetail { font-size: 11px; color: var(--text-dim); }
+
+.planCount {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--text-muted);
+}
+
+/* ─── ACTIVITY ───────────────────────────────────────────── */
+.actList { display: flex; flex-direction: column; }
+
+.actItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.actItem:last-child { border-bottom: none; }
+
+.actIcon {
+  width: 28px; height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.actBody { flex: 1; }
+
+.actText {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.actText strong { color: var(--text-secondary); font-weight: 500; }
+
+.actTime { font-size: 10px; color: var(--text-faint); margin-top: 2px; }
+
+/* ─── WEEK CHART ─────────────────────────────────────────── */
+.chartWrap { display: flex; flex-direction: column; gap: 12px; }
+
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 80px;
+}
+
+.barCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.bar {
+  width: 100%;
+  border-radius: 2px 2px 0 0;
+  background: var(--border);
+  transition: background 0.2s;
+  cursor: pointer;
+}
+.bar:hover   { background: var(--gold); opacity: 0.7; }
+.barActive   { background: var(--gold); }
+
+.barLabel {
+  font-size: 9px;
+  color: var(--text-faint);
+  letter-spacing: 0.05em;
+}
+
+.chartSummary {
+  display: flex;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.summaryItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.summaryNum {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--text-primary);
+  line-height: 1;
+}
+.summaryNum.green { color: var(--green); }
+.summaryNum.red   { color: var(--red);   }
+
+.summaryLabel { font-size: 10px; color: var(--text-dim); }
+
+.summaryDivider { width: 1px; background: var(--border); align-self: stretch; }
+
+/* ─── COVERAGE ───────────────────────────────────────────── */
+.coverageList { display: flex; flex-direction: column; gap: 14px; }
+
+.coverageItem {}
+
+.coverageRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.coverageLabel { font-size: 12px; color: var(--text-muted); }
+
+.coverageVal {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--gold);
+}
+
+.coverageBar {
+  height: 1px;
+  background: var(--border);
+  border-radius: 1px;
+}
+
+.coverageFill {
+  height: 100%;
+  background: var(--gold);
+  opacity: 0.4;
+  border-radius: 1px;
+}
+
+/* ─── RESPONSIVE ─────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .metrics { grid-template-columns: repeat(2, 1fr); }
+  .grid2   { grid-template-columns: 1fr; }
+  .grid3   { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 700px) {
+  .metrics { grid-template-columns: 1fr 1fr; }
+  .grid3   { grid-template-columns: 1fr; }
+  .content { padding: 16px; }
+  .topbar  { padding: 0 16px; }
+}

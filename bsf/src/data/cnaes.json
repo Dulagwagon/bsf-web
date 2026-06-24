@@ -1,0 +1,15 @@
+[
+  { "id": 1,  "codigo": "6201501", "descricao": "Desenvolvimento de programas de computador sob encomenda", "secao": "J", "divisao": "62" },
+  { "id": 2,  "codigo": "6202300", "descricao": "Desenvolvimento e licenciamento de programas de computador customizáveis", "secao": "J", "divisao": "62" },
+  { "id": 3,  "codigo": "6311900", "descricao": "Tratamento de dados, provedores de serviços de aplicação e serviços de hospedagem na internet", "secao": "J", "divisao": "63" },
+  { "id": 4,  "codigo": "4711301", "descricao": "Comércio varejista de mercadorias em geral, com predominância de produtos alimentícios — hipermercados", "secao": "G", "divisao": "47" },
+  { "id": 5,  "codigo": "4712100", "descricao": "Comércio varejista de mercadorias em geral, com predominância de produtos alimentícios — minimercados, mercearias e armazéns", "secao": "G", "divisao": "47" },
+  { "id": 6,  "codigo": "2821601", "descricao": "Fabricação de máquinas e equipamentos para uso industrial específico", "secao": "C", "divisao": "28" },
+  { "id": 7,  "codigo": "2941700", "descricao": "Fabricação de peças e acessórios para o sistema motor de veículos automotores", "secao": "C", "divisao": "29" },
+  { "id": 8,  "codigo": "0111301", "descricao": "Cultivo de arroz", "secao": "A", "divisao": "01" },
+  { "id": 9,  "codigo": "0112101", "descricao": "Cultivo de algodão herbáceo", "secao": "A", "divisao": "01" },
+  { "id": 10, "codigo": "4120400", "descricao": "Construção de edifícios", "secao": "F", "divisao": "41" },
+  { "id": 11, "codigo": "4930201", "descricao": "Transporte rodoviário de carga, exceto produtos perigosos e mudanças, municipal", "secao": "H", "divisao": "49" },
+  { "id": 12, "codigo": "8610101", "descricao": "Atividades de atendimento hospitalar, exceto pronto-socorro e unidades para atendimento a urgências", "secao": "Q", "divisao": "86" },
+  { "id": 13, "codigo": "8511200", "descricao": "Educação infantil — creche", "secao": "P", "divisao": "85" }
+]

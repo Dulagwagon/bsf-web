@@ -8,6 +8,7 @@ from flask_cors import CORS
 
 from routes.cnaes import cnaes_bp
 from routes.planos import planos_bp
+from routes.municipios import municipios_bp
 
 
 def create_app():
@@ -18,6 +19,7 @@ def create_app():
 
     app.register_blueprint(cnaes_bp, url_prefix="/api/cnaes")
     app.register_blueprint(planos_bp, url_prefix="/api/planos")
+    app.register_blueprint(municipios_bp, url_prefix="/api/municipios")
 
     @app.get("/api/health")
     def health():

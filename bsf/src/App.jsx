@@ -31,7 +31,12 @@ export default function App() {
           onRunPipeline={() => setPage('pipeline')}
         />
       )
-      case 'pipeline': return <Pipeline />
+      case 'pipeline': return (
+        <Pipeline
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
+      )
       case 'planos':   return <Planos />
       case 'cnaes':    return <Cnaes />
       default: return (

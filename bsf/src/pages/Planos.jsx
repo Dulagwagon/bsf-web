@@ -1,20 +1,12 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import styles from './Planos.module.css';
 import { planosApi } from '../api/planos';
+import { municipiosApi } from '../api/municipios';
 
 /* ─── helpers ────────────────────────────────────────────── */
-const IBGE6_RE = /^\d{6}$/;
 const CNAE_RE  = /^\d{7}$/;
 
 const normalizeCnae = (raw) => raw.replace(/\D/g, '');
-
-const normalizeIbge = (raw) => {
-  const d = raw.replace(/\D/g, '');
-  // aceita 6 ou 7 dígitos — se 7, descarta o último (dígito verificador)
-  if (d.length === 7) return d.slice(0, 6);
-  if (d.length === 6) return d;
-  return null;
-};
 
 const parseTokens = (text) =>
   text.split(/[\n,;]+/).map(t => t.trim()).filter(Boolean);
@@ -26,7 +18,14 @@ const STATUS_META = {
   running: { label: 'Executando', cls: 'running' },
 };
 
-const REGIOES   = ['Norte','Nordeste','Centro-Oeste','Sudeste','Sul'];
+const REGIOES = ['Norte','Nordeste','Centro-Oeste','Sudeste','Sul'];
+
+const UFS = [
+  'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
+  'MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN',
+  'RS','RO','RR','SC','SP','SE','TO',
+];
+
 const EMPTY_FORM = { nome: '', regiao: '', estado: '', cnaes: [], municipios: [] };
 
 /* ─── tag input ──────────────────────────────────────────── */
@@ -144,6 +143,10 @@ export default function Planos() {
   const [error, setError]               = useState('');
   const [toast, setToast]               = useState(null);
 
+  const [municipiosDisponiveis, setMunicipiosDisponiveis] = useState([]);
+  const [loadingMunicipios, setLoadingMunicipios]         = useState(false);
+  const [municipioSearch, setMunicipioSearch]             = useState('');
+
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 2500);
@@ -165,10 +168,32 @@ export default function Planos() {
 
   useEffect(() => { loadPlanos(); }, [loadPlanos]);
 
+  /* ── carregar municípios do estado selecionado ── */
+  useEffect(() => {
+    if (!form.estado) {
+      setMunicipiosDisponiveis([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingMunicipios(true);
+    setMunicipioSearch('');
+    municipiosApi.list(form.estado)
+      .then(data => { if (!cancelled) setMunicipiosDisponiveis(data); })
+      .catch(() => { if (!cancelled) setMunicipiosDisponiveis([]); })
+      .finally(() => { if (!cancelled) setLoadingMunicipios(false); });
+    return () => { cancelled = true; };
+  }, [form.estado]);
+
   const filtered = useMemo(() =>
     planos.filter(p => p.nome.toLowerCase().includes(search.toLowerCase())),
     [planos, search]
   );
+
+  const municipiosFiltrados = useMemo(() => {
+    if (!municipioSearch.trim()) return municipiosDisponiveis;
+    const q = municipioSearch.trim().toLowerCase();
+    return municipiosDisponiveis.filter(m => m.nome.toLowerCase().includes(q));
+  }, [municipiosDisponiveis, municipioSearch]);
 
   const openPlano = (plano) => {
     setSelectedId(plano.id);
@@ -243,6 +268,19 @@ export default function Planos() {
 
   const addTags  = (field, vals) => setForm(f => ({ ...f, [field]: [...f[field], ...vals] }));
   const removeTag = (field, val) => setForm(f => ({ ...f, [field]: f[field].filter(t => t !== val) }));
+
+  const toggleMunicipio = (codigo) => {
+    setForm(f => ({
+      ...f,
+      municipios: f.municipios.includes(codigo)
+        ? f.municipios.filter(c => c !== codigo)
+        : [...f.municipios, codigo],
+    }));
+  };
+
+  const handleEstadoChange = (novoEstado) => {
+    setForm(f => ({ ...f, estado: novoEstado, municipios: [] }));
+  };
 
   const formValid = form.nome.trim().length > 0;
 
@@ -389,15 +427,18 @@ export default function Planos() {
                 </div>
                 <div className={styles.fieldGroup}>
                   <label className={styles.fieldLabel} htmlFor="f-estado">Estado (UF)</label>
-                  <input
-                    id="f-estado"
-                    className={styles.fieldInput}
-                    type="text"
-                    maxLength={2}
-                    placeholder="Ex: SP"
-                    value={form.estado}
-                    onChange={e => setForm(f => ({ ...f, estado: e.target.value.toUpperCase() }))}
-                  />
+                  <div className={styles.selectWrap}>
+                    <select
+                      id="f-estado"
+                      className={styles.fieldSelect}
+                      value={form.estado}
+                      onChange={e => handleEstadoChange(e.target.value)}
+                    >
+                      <option value="">Selecionar...</option>
+                      {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                    </select>
+                    <i className="ti ti-chevron-down" aria-hidden="true" />
+                  </div>
                 </div>
               </div>
 
@@ -421,18 +462,75 @@ export default function Planos() {
               {/* MUNICÍPIOS */}
               <div className={styles.fieldGroup}>
                 <label className={styles.fieldLabel}>
-                  Municípios <span className={styles.fieldSub}>(código IBGE — 6 dígitos)</span>
-                  <span className={styles.fieldCount}>{form.municipios.length} adicionado{form.municipios.length !== 1 ? 's' : ''}</span>
+                  Municípios <span className={styles.fieldSub}>(carregados a partir do estado selecionado)</span>
+                  <span className={styles.fieldCount}>{form.municipios.length} selecionado{form.municipios.length !== 1 ? 's' : ''}</span>
                 </label>
-                <TagInput
-                  tags={form.municipios}
-                  onAdd={vals => addTags('municipios', vals)}
-                  onRemove={val => removeTag('municipios', val)}
-                  placeholder="Digite o código IBGE e pressione Enter ou vírgula..."
-                  normalize={normalizeIbge}
-                  validate={(n) => IBGE6_RE.test(n)}
-                  hint="Ex: 355030 (São Paulo) — 6 dígitos, sem o dígito verificador"
-                />
+
+                {!form.estado ? (
+                  <div className={styles.municipiosHint}>
+                    <i className="ti ti-map-pin" aria-hidden="true" />
+                    Selecione um estado para ver os municípios disponíveis
+                  </div>
+                ) : loadingMunicipios ? (
+                  <div className={styles.municipiosHint}>
+                    <i className="ti ti-loader-2" aria-hidden="true" />
+                    Carregando municípios de {form.estado}...
+                  </div>
+                ) : municipiosDisponiveis.length === 0 ? (
+                  <div className={styles.municipiosHint}>
+                    <i className="ti ti-map-off" aria-hidden="true" />
+                    Nenhum município cadastrado para {form.estado}.{' '}
+                    Cadastre em <strong>Municípios</strong> no menu lateral.
+                  </div>
+                ) : (
+                  <>
+                    <div className={styles.municipioSearchWrap}>
+                      <i className="ti ti-search" aria-hidden="true" />
+                      <input
+                        className={styles.municipioSearchInput}
+                        type="search"
+                        placeholder={`Buscar município em ${form.estado}...`}
+                        value={municipioSearch}
+                        onChange={e => setMunicipioSearch(e.target.value)}
+                      />
+                      {municipioSearch && (
+                        <button
+                          type="button"
+                          className={styles.municipioSearchClear}
+                          onClick={() => setMunicipioSearch('')}
+                          aria-label="Limpar busca"
+                        >
+                          <i className="ti ti-x" aria-hidden="true" />
+                        </button>
+                      )}
+                    </div>
+
+                    {municipiosFiltrados.length === 0 ? (
+                      <div className={styles.municipiosHint}>
+                        <i className="ti ti-search-off" aria-hidden="true" />
+                        Nenhum município encontrado para "{municipioSearch}"
+                      </div>
+                    ) : (
+                      <div className={styles.municipioList}>
+                        {municipiosFiltrados.map(m => {
+                          const checked = form.municipios.includes(m.codigo);
+                          return (
+                            <label key={m.id} className={`${styles.municipioOption} ${checked ? styles.municipioOptionActive : ''}`}>
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleMunicipio(m.codigo)}
+                                className={styles.municipioCheckbox}
+                              />
+                              <span className={styles.municipioNome}>{m.nome}</span>
+                              <span className={styles.municipioCodigo}>{m.codigo}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
 
               {error && (

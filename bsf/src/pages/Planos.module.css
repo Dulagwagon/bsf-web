@@ -657,6 +657,91 @@
 }
 
 /* ─── MUNICÍPIOS (lista por estado) ──────────────────────── */
+.municipioChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.municipioChip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-border);
+  border-radius: 3px;
+  padding: 4px 6px 4px 9px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gold);
+  white-space: nowrap;
+}
+
+.municipioChipCodigo {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.municipioChip button {
+  background: none;
+  border: none;
+  color: var(--gold);
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.municipioChip button:hover { opacity: 1; }
+
+.municipioSearchWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.municipioSearchWrap > i {
+  position: absolute;
+  left: 10px;
+  color: var(--text-muted);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.municipioSearchInput {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 9px 30px 9px 32px;
+  font-size: 12px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.municipioSearchInput::placeholder { color: var(--text-faint); }
+.municipioSearchInput:focus { border-color: var(--gold); }
+.municipioSearchInput::-webkit-search-cancel-button { display: none; }
+
+.municipioSearchClear {
+  position: absolute;
+  right: 9px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  transition: color 0.15s;
+}
+.municipioSearchClear:hover { color: var(--text-primary); }
+
 .municipiosHint {
   display: flex;
   align-items: center;

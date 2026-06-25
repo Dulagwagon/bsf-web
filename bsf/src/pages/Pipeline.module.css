@@ -14,14 +14,7 @@
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 0 28px;
-}
-
-.topbarRight {
-  display: flex;
-  align-items: center;
-  gap: 12px;
 }
 
 .topbarLeft { display: flex; flex-direction: column; }
@@ -38,38 +31,6 @@
   font-size: 11px;
   color: var(--text-dim);
   margin-top: 2px;
-}
-
-.iconBtn {
-  width: 32px;
-  height: 32px;
-  background: var(--bg-input);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  font-size: 16px;
-  transition: color 0.15s, border-color 0.15s;
-  position: relative;
-}
-
-.iconBtn:hover {
-  color: var(--gold);
-  border-color: var(--gold);
-}
-
-.hasBadge::after {
-  content: '';
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 6px;
-  height: 6px;
-  background: var(--gold);
-  border-radius: 50%;
-  border: 1px solid var(--bg-base);
 }
 
 /* ─── LAYOUT ─────────────────────────────────────────────── */
@@ -429,6 +390,23 @@
 }
 
 .logEmpty i { font-size: 32px; }
+
+.pipelineEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px 12px;
+  color: var(--text-dim);
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.pipelineEmpty i { font-size: 28px; color: var(--text-faint); }
+.pipelineEmpty i.ti-loader-2 { animation: spin 0.8s linear infinite; }
+.pipelineEmpty strong { color: var(--text-secondary); font-weight: 500; }
 
 .logLine {
   display: flex;

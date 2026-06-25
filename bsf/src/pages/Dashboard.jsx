@@ -1,9 +1,13 @@
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import styles from './Dashboard.module.css';
 import ThemeToggle from '../components/ThemeToggle';
+import { planosApi } from '../api/planos';
+import { cnaesApi } from '../api/cnaes';
+import { municipiosApi } from '../api/municipios';
 
 /* ── helpers ──────────────────────────────────────────────── */
 const fmt = (n) =>
-  n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+  n == null ? '—' : (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
 
 const today = () =>
   new Date().toLocaleDateString('pt-BR', {
@@ -11,18 +15,12 @@ const today = () =>
   });
 
 /* ── sub-components ───────────────────────────────────────── */
-function MetricCard({ label, value, sub, delta, deltaUp, accent }) {
+function MetricCard({ label, value, sub, accent }) {
   return (
     <div className={`${styles.metric} ${styles[accent]}`}>
       <div className={styles.metricLabel}>{label}</div>
       <div className={styles.metricValue}>{value}</div>
-      {sub   && <div className={styles.metricSub}>{sub}</div>}
-      {delta && (
-        <span className={`${styles.delta} ${deltaUp ? styles.deltaUp : styles.deltaDown}`}>
-          <i className={`ti ${deltaUp ? 'ti-arrow-up' : 'ti-arrow-down'}`} aria-hidden="true" />
-          {delta}
-        </span>
-      )}
+      {sub && <div className={styles.metricSub}>{sub}</div>}
     </div>
   );
 }
@@ -34,92 +32,27 @@ const STATUS_MAP = {
   error:    { dot: styles.dotError,    badge: styles.badgeError,    label: 'Erro'        },
 };
 
-function PipelineItem({ name, meta, status, progress }) {
-  const s = STATUS_MAP[status];
+function PipelineItem({ name, meta, status }) {
+  const s = STATUS_MAP[status] ?? STATUS_MAP.idle;
   return (
     <div className={styles.pipeItem}>
       <div className={`${styles.dot} ${s.dot}`} aria-hidden="true" />
       <div className={styles.pipeInfo}>
         <div className={styles.pipeName}>{name}</div>
         <div className={styles.pipeMeta}>{meta}</div>
-        {status === 'running' && progress != null && (
-          <div className={styles.progressBar}>
-            <div className={styles.progressFill} style={{ width: `${progress}%` }} />
-          </div>
-        )}
       </div>
-      <span className={`${styles.badge} ${s.badge}`}>{status === 'running' ? `${progress}%` : s.label}</span>
+      <span className={`${styles.badge} ${s.badge}`}>{s.label}</span>
     </div>
   );
 }
 
-function PlanItem({ icon, name, detail, count }) {
+function PlanItem({ icon, name, detail }) {
   return (
     <div className={styles.planItem}>
       <div className={styles.planIcon}><i className={`ti ${icon}`} aria-hidden="true" /></div>
       <div className={styles.planInfo}>
         <div className={styles.planName}>{name}</div>
         <div className={styles.planDetail}>{detail}</div>
-      </div>
-      <span className={styles.planCount}>{fmt(count)}</span>
-    </div>
-  );
-}
-
-function ActivityItem({ icon, text, time }) {
-  return (
-    <div className={styles.actItem}>
-      <div className={styles.actIcon}><i className={`ti ${icon}`} aria-hidden="true" /></div>
-      <div className={styles.actBody}>
-        <div className={styles.actText} dangerouslySetInnerHTML={{ __html: text }} />
-        <div className={styles.actTime}>{time}</div>
-      </div>
-    </div>
-  );
-}
-
-const BAR_DATA = [
-  { day: 'Seg', val: 5 },
-  { day: 'Ter', val: 8 },
-  { day: 'Qua', val: 4 },
-  { day: 'Qui', val: 9 },
-  { day: 'Sex', val: 6 },
-  { day: 'Sáb', val: 7, active: true },
-  { day: 'Dom', val: 5 },
-];
-
-const BAR_MAX = Math.max(...BAR_DATA.map(b => b.val));
-
-function WeekChart() {
-  return (
-    <div className={styles.chartWrap}>
-      <div className={styles.bars}>
-        {BAR_DATA.map(b => (
-          <div key={b.day} className={styles.barCol}>
-            <div
-              className={`${styles.bar} ${b.active ? styles.barActive : ''}`}
-              style={{ height: `${Math.round((b.val / BAR_MAX) * 72)}px` }}
-              title={`${b.val} execuções`}
-            />
-            <span className={styles.barLabel}>{b.day}</span>
-          </div>
-        ))}
-      </div>
-      <div className={styles.chartSummary}>
-        <div className={styles.summaryItem}>
-          <span className={styles.summaryNum}>38</span>
-          <span className={styles.summaryLabel}>total</span>
-        </div>
-        <div className={styles.summaryDivider} />
-        <div className={styles.summaryItem}>
-          <span className={`${styles.summaryNum} ${styles.green}`}>36</span>
-          <span className={styles.summaryLabel}>sucesso</span>
-        </div>
-        <div className={styles.summaryDivider} />
-        <div className={styles.summaryItem}>
-          <span className={`${styles.summaryNum} ${styles.red}`}>2</span>
-          <span className={styles.summaryLabel}>erro</span>
-        </div>
       </div>
     </div>
   );
@@ -139,8 +72,84 @@ function CoverageItem({ label, value, pct }) {
   );
 }
 
+function EmptyBlock({ icon, children }) {
+  return (
+    <div className={styles.emptyBlock}>
+      <i className={`ti ${icon}`} aria-hidden="true" />
+      <span>{children}</span>
+    </div>
+  );
+}
+
 /* ── page ─────────────────────────────────────────────────── */
 export default function Dashboard({ onRunPipeline, theme, onToggleTheme }) {
+  const [planos, setPlanos]         = useState([]);
+  const [cnaesTotal, setCnaesTotal] = useState(null);
+  const [municipiosTotal, setMunicipiosTotal] = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [loadError, setLoadError]   = useState('');
+  const [statusSearch, setStatusSearch] = useState('');
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setLoadError('');
+    try {
+      const [planosData, cnaesData, municipiosData] = await Promise.all([
+        planosApi.list(),
+        cnaesApi.list().catch(() => []),
+        municipiosApi.list().catch(() => []),
+      ]);
+      setPlanos(planosData);
+      setCnaesTotal(cnaesData.length);
+      setMunicipiosTotal(municipiosData.length);
+    } catch (e) {
+      setLoadError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  /* ── métricas derivadas dos planos reais ── */
+  const stats = useMemo(() => {
+    const cnaesUnicos = new Set();
+    const municipiosUnicos = new Set();
+    const estadosAtivos = new Set();
+    let emErro = 0;
+
+    planos.forEach(p => {
+      p.cnaes.forEach(c => cnaesUnicos.add(c));
+      p.municipios.forEach(m => municipiosUnicos.add(m));
+      if (p.estado) estadosAtivos.add(p.estado);
+      if (p.status === 'error') emErro++;
+    });
+
+    return {
+      totalPlanos: planos.length,
+      cnaesUnicos: cnaesUnicos.size,
+      municipiosUnicos: municipiosUnicos.size,
+      estadosAtivos: estadosAtivos.size,
+      emErro,
+    };
+  }, [planos]);
+
+  const planosRecentes = useMemo(() =>
+    [...planos].slice(-4).reverse(),
+    [planos]
+  );
+
+  const planosFiltrados = useMemo(() => {
+    if (!statusSearch.trim()) return planos;
+    const q = statusSearch.trim().toLowerCase();
+    return planos.filter(p => p.nome.toLowerCase().includes(q));
+  }, [planos, statusSearch]);
+
+  const coveragePct = (value, total) => {
+    if (!total) return 0;
+    return Math.min(100, Math.round((value / total) * 100));
+  };
+
   return (
     <div className={styles.page}>
       {/* TOPBAR */}
@@ -155,7 +164,7 @@ export default function Dashboard({ onRunPipeline, theme, onToggleTheme }) {
             Executar pipeline
           </button>
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
-          <button className={`${styles.iconBtn} ${styles.hasBadge}`} aria-label="Notificações">
+          <button className={styles.iconBtn} aria-label="Notificações">
             <i className="ti ti-bell" aria-hidden="true" />
           </button>
           <button className={styles.iconBtn} aria-label="Ajuda">
@@ -167,79 +176,148 @@ export default function Dashboard({ onRunPipeline, theme, onToggleTheme }) {
       {/* CONTENT */}
       <div className={styles.content}>
 
+        {loadError && (
+          <div className={styles.errorBanner}>
+            <i className="ti ti-plug-connected-x" aria-hidden="true" />
+            {loadError}
+            <button onClick={loadData}><i className="ti ti-refresh" aria-hidden="true" /> Tentar novamente</button>
+          </div>
+        )}
+
         {/* METRICS */}
         <div className={styles.metrics}>
-          <MetricCard label="Planos ativos"      value="12"    delta="+3 este mês"       deltaUp accent="gold"  />
-          <MetricCard label="Registros filtrados" value="48.3k" delta="+12% vs. anterior" deltaUp accent="green" />
-          <MetricCard label="Última execução"     value="2h"    sub="há 2 horas"                  accent="blue"  />
-          <MetricCard label="Taxa de sucesso"     value="98.4%" delta="estável"           deltaUp accent="muted" />
+          <MetricCard
+            label="Planos cadastrados"
+            value={loading ? '—' : stats.totalPlanos}
+            sub={!loading && stats.emErro > 0 ? `${stats.emErro} com erro` : undefined}
+            accent="gold"
+          />
+          <MetricCard
+            label="CNAEs no catálogo"
+            value={loading ? '—' : fmt(cnaesTotal)}
+            accent="green"
+          />
+          <MetricCard
+            label="Municípios no catálogo"
+            value={loading ? '—' : fmt(municipiosTotal)}
+            accent="blue"
+          />
+          <MetricCard
+            label="Registros filtrados"
+            value="—"
+            sub="disponível após executar o pipeline"
+            accent="muted"
+          />
         </div>
 
         {/* PIPELINE + PLANS */}
         <div className={styles.grid2}>
           <div className={styles.card}>
             <div className={styles.cardHeader}>
-              <span className={styles.cardTitle}>Status do pipeline</span>
-              <button className={styles.cardAction}>
-                Ver todos <i className="ti ti-arrow-right" aria-hidden="true" />
-              </button>
+              <span className={styles.cardTitle}>Status dos planos</span>
             </div>
-            <div className={styles.pipeList}>
-              <PipelineItem name="Plano SP — Tecnologia" meta="CNAEs: 6201501, 6311900 · 42 municípios" status="running" progress={67} />
-              <PipelineItem name="Plano RJ — Varejo"     meta="CNAEs: 4711301, 4712100 · 18 municípios" status="done" />
-              <PipelineItem name="Plano MG — Indústria"  meta="CNAEs: 2821601, 2941700 · 67 municípios" status="done" />
-              <PipelineItem name="Plano PR — Agronegócio" meta="CNAEs: 0111301, 0112101 · 189 municípios" status="idle" />
-              <PipelineItem name="Plano BA — Construção" meta="CNAEs: 4120400 · 22 municípios"           status="error" />
-            </div>
+
+            {!loading && planos.length > 0 && (
+              <div className={styles.statusSearchWrap}>
+                <i className="ti ti-search" aria-hidden="true" />
+                <input
+                  className={styles.statusSearchInput}
+                  type="search"
+                  placeholder="Buscar plano..."
+                  value={statusSearch}
+                  onChange={e => setStatusSearch(e.target.value)}
+                />
+                {statusSearch && (
+                  <button
+                    className={styles.statusSearchClear}
+                    onClick={() => setStatusSearch('')}
+                    aria-label="Limpar busca"
+                  >
+                    <i className="ti ti-x" aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+            )}
+
+            {loading ? (
+              <EmptyBlock icon="ti-loader-2">Carregando...</EmptyBlock>
+            ) : planos.length === 0 ? (
+              <EmptyBlock icon="ti-file-off">Nenhum plano cadastrado ainda. Crie um na tela Planos.</EmptyBlock>
+            ) : planosFiltrados.length === 0 ? (
+              <EmptyBlock icon="ti-search-off">Nenhum plano encontrado para "{statusSearch}"</EmptyBlock>
+            ) : (
+              <div className={styles.pipeList}>
+                {planosFiltrados.map(p => (
+                  <PipelineItem
+                    key={p.id}
+                    name={p.nome}
+                    meta={`${p.cnaes.length} CNAE${p.cnaes.length !== 1 ? 's' : ''} · ${p.municipios.length} município${p.municipios.length !== 1 ? 's' : ''}`}
+                    status={p.status}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <span className={styles.cardTitle}>Planos recentes</span>
-              <button className={styles.cardAction}>
-                Novo <i className="ti ti-plus" aria-hidden="true" />
-              </button>
             </div>
-            <div className={styles.planList}>
-              <PlanItem icon="ti-cpu"          name="SP — Tecnologia"  detail="2 CNAEs · 42 municípios"  count={2100} />
-              <PlanItem icon="ti-shopping-cart" name="RJ — Varejo"      detail="2 CNAEs · 18 municípios"  count={8400} />
-              <PlanItem icon="ti-tool"          name="MG — Indústria"   detail="2 CNAEs · 67 municípios"  count={14200} />
-              <PlanItem icon="ti-plant"         name="PR — Agronegócio" detail="2 CNAEs · 189 municípios" count={23600} />
-            </div>
+            {loading ? (
+              <EmptyBlock icon="ti-loader-2">Carregando...</EmptyBlock>
+            ) : planosRecentes.length === 0 ? (
+              <EmptyBlock icon="ti-file-off">Nenhum plano cadastrado ainda.</EmptyBlock>
+            ) : (
+              <div className={styles.planList}>
+                {planosRecentes.map(p => (
+                  <PlanItem
+                    key={p.id}
+                    icon="ti-file-description"
+                    name={p.nome}
+                    detail={`${p.estado || '—'} · ${p.cnaes.length} CNAE${p.cnaes.length !== 1 ? 's' : ''} · ${p.municipios.length} município${p.municipios.length !== 1 ? 's' : ''}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
         {/* BOTTOM */}
-        <div className={styles.grid3}>
+        <div className={styles.grid2}>
           <div className={styles.card}>
             <div className={styles.cardHeader}>
-              <span className={styles.cardTitle}>Atividade recente</span>
+              <span className={styles.cardTitle}>Execuções</span>
             </div>
-            <div className={styles.actList}>
-              <ActivityItem icon="ti-player-play"   text="Pipeline <strong>SP — Tecnologia</strong> iniciado"                   time="agora mesmo" />
-              <ActivityItem icon="ti-check"         text="<strong>MG — Indústria</strong> concluído com 14.2k registros"         time="1h atrás"    />
-              <ActivityItem icon="ti-plus"          text="Plano <strong>RS — Logística</strong> criado"                          time="3h atrás"    />
-              <ActivityItem icon="ti-alert-triangle" text="Erro em <strong>BA — Construção</strong>: fonte indisponível"          time="5h atrás"    />
-            </div>
-          </div>
-
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <span className={styles.cardTitle}>Execuções — 7 dias</span>
-            </div>
-            <WeekChart />
+            <EmptyBlock icon="ti-chart-bar">
+              Histórico de execuções estará disponível quando o pipeline for conectado.
+            </EmptyBlock>
           </div>
 
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <span className={styles.cardTitle}>Cobertura dos planos</span>
             </div>
-            <div className={styles.coverageList}>
-              <CoverageItem label="CNAEs mapeados"    value="24"    pct={18} />
-              <CoverageItem label="Municípios cobertos" value="338"  pct={6}  />
-              <CoverageItem label="Estados ativos"    value="5"     pct={19} />
-              <CoverageItem label="Registros únicos"  value="48.3k" pct={72} />
-            </div>
+            {loading ? (
+              <EmptyBlock icon="ti-loader-2">Carregando...</EmptyBlock>
+            ) : (
+              <div className={styles.coverageList}>
+                <CoverageItem
+                  label="CNAEs em uso"
+                  value={`${stats.cnaesUnicos} / ${cnaesTotal ?? 0}`}
+                  pct={coveragePct(stats.cnaesUnicos, cnaesTotal)}
+                />
+                <CoverageItem
+                  label="Municípios em uso"
+                  value={`${stats.municipiosUnicos} / ${municipiosTotal ?? 0}`}
+                  pct={coveragePct(stats.municipiosUnicos, municipiosTotal)}
+                />
+                <CoverageItem
+                  label="Estados ativos"
+                  value={stats.estadosAtivos}
+                  pct={coveragePct(stats.estadosAtivos, 27)}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

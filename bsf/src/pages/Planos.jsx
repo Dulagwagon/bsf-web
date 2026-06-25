@@ -466,6 +466,27 @@ export default function Planos() {
                   <span className={styles.fieldCount}>{form.municipios.length} selecionado{form.municipios.length !== 1 ? 's' : ''}</span>
                 </label>
 
+                {form.municipios.length > 0 && (
+                  <div className={styles.municipioChips}>
+                    {form.municipios.map(codigo => {
+                      const info = municipiosDisponiveis.find(m => m.codigo === codigo);
+                      return (
+                        <span key={codigo} className={styles.municipioChip}>
+                          {info ? info.nome : codigo}
+                          <span className={styles.municipioChipCodigo}>{codigo}</span>
+                          <button
+                            type="button"
+                            onClick={() => toggleMunicipio(codigo)}
+                            aria-label={`Remover ${info ? info.nome : codigo}`}
+                          >
+                            <i className="ti ti-x" aria-hidden="true" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {!form.estado ? (
                   <div className={styles.municipiosHint}>
                     <i className="ti ti-map-pin" aria-hidden="true" />

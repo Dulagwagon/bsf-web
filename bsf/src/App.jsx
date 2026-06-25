@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
-import Login     from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import Pipeline  from './pages/Pipeline'
-import Planos    from './pages/Planos'
-import Cnaes     from './pages/Cnaes'
-import Sidebar   from './components/Sidebar'
+import Login      from './pages/Login'
+import Dashboard  from './pages/Dashboard'
+import Pipeline   from './pages/Pipeline'
+import Planos     from './pages/Planos'
+import Cnaes      from './pages/Cnaes'
+import Municipios from './pages/Municipios'
+import Resultados from './pages/Resultados'
+import Sidebar    from './components/Sidebar'
 
 export default function App() {
   const [user, setUser]   = useState(null)
@@ -31,14 +33,11 @@ export default function App() {
           onRunPipeline={() => setPage('pipeline')}
         />
       )
-      case 'pipeline': return (
-        <Pipeline
-          theme={theme}
-          onToggleTheme={toggleTheme}
-        />
-      )
-      case 'planos':   return <Planos />
-      case 'cnaes':    return <Cnaes />
+      case 'pipeline':    return <Pipeline />
+      case 'planos':      return <Planos />
+      case 'cnaes':       return <Cnaes />
+      case 'municipios':  return <Municipios />
+      case 'resultados':  return <Resultados />
       default: return (
         <div style={{
           flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',

@@ -5,7 +5,9 @@ import Pipeline   from './pages/Pipeline'
 import Planos     from './pages/Planos'
 import Cnaes      from './pages/Cnaes'
 import Municipios from './pages/Municipios'
+import Fontes     from './pages/Fontes'
 import Resultados from './pages/Resultados'
+import Paineis    from './pages/Paineis'
 import Sidebar    from './components/Sidebar'
 
 export default function App() {
@@ -37,7 +39,9 @@ export default function App() {
       case 'planos':      return <Planos />
       case 'cnaes':       return <Cnaes />
       case 'municipios':  return <Municipios />
+      case 'fontes':      return <Fontes />
       case 'resultados':  return <Resultados />
+      case 'paineis':     return <Paineis />
       default: return (
         <div style={{
           flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',

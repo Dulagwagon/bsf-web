@@ -1,2 +1,4 @@
 flask==3.0.3
 flask-cors==4.0.1
+pandas>=2.0.0
+pyarrow>=14.0.0

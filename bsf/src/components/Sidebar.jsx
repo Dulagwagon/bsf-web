@@ -24,7 +24,9 @@ const NAV = [
     items: [
       { id: 'cnaes',      icon: 'ti-building',     label: 'CNAEs' },
       { id: 'municipios', icon: 'ti-map-pin',       label: 'Municípios' },
+      { id: 'fontes',     icon: 'ti-database',      label: 'Fontes' },
       { id: 'resultados', icon: 'ti-table',         label: 'Resultados' },
+      { id: 'paineis',    icon: 'ti-chart-area-line', label: 'Painéis' },
     ],
   },
   {

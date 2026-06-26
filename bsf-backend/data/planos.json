@@ -354,7 +354,8 @@
       "432375",
       "432380"
     ],
-    "status": "idle"
+    "status": "done",
+    "etapa_atual": null
   },
   {
     "id": 2,

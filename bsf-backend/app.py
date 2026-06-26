@@ -1,7 +1,7 @@
 """
 Business Syndicate Framework — Backend API
 Servidor Flask responsável por persistir dados (CNAEs, Planos, Municípios)
-e, futuramente, executar o pipeline de filtragem.
+e executar o pipeline de filtragem (orquestrador).
 """
 from flask import Flask
 from flask_cors import CORS
@@ -10,6 +10,9 @@ from routes.cnaes import cnaes_bp
 from routes.planos import planos_bp
 from routes.municipios import municipios_bp
 from routes.resultados import resultados_bp
+from routes.pipeline import pipeline_bp
+from routes.fontes import fontes_bp
+from routes.paineis import paineis_bp
 
 
 def create_app():
@@ -22,6 +25,9 @@ def create_app():
     app.register_blueprint(planos_bp, url_prefix="/api/planos")
     app.register_blueprint(municipios_bp, url_prefix="/api/municipios")
     app.register_blueprint(resultados_bp, url_prefix="/api/resultados")
+    app.register_blueprint(pipeline_bp, url_prefix="/api/pipeline")
+    app.register_blueprint(fontes_bp, url_prefix="/api/fontes")
+    app.register_blueprint(paineis_bp, url_prefix="/api/paineis")
 
     @app.get("/api/health")
     def health():

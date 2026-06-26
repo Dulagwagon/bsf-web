@@ -59,7 +59,7 @@ def delete(plano_id):
 def patch_status(plano_id):
     payload = request.get_json(silent=True) or {}
     try:
-        item = update_status(plano_id, payload.get("status"))
+        item = update_status(plano_id, payload.get("status"), payload.get("etapa_atual"))
         return jsonify(item)
     except PlanoValidationError as e:
         status = 404 if e.message == "Plano não encontrado." else 400

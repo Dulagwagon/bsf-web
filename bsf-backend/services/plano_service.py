@@ -75,7 +75,10 @@ def _validate_payload(payload: dict, items: list, ignore_id: int = None) -> dict
     if not nome:
         raise PlanoValidationError("Nome do plano é obrigatório.")
 
-    if regiao and regiao not in REGIOES_VALIDAS:
+    if not regiao:
+        raise PlanoValidationError("Região é obrigatória — o pipeline precisa dela para localizar a fonte de dados.")
+
+    if regiao not in REGIOES_VALIDAS:
         raise PlanoValidationError(f"Região '{regiao}' inválida.")
 
     if estado and not re.match(r"^[A-Z]{2}$", estado):
@@ -107,7 +110,7 @@ def _validate_payload(payload: dict, items: list, ignore_id: int = None) -> dict
 def create_plano(payload: dict) -> dict:
     items = list_planos()
     clean = _validate_payload(payload, items)
-    new_item = {"id": _next_id(items), **clean}
+    new_item = {"id": _next_id(items), "etapa_atual": None, **clean}
     items.append(new_item)
     write_json(DATA_PATH, items)
     return new_item
@@ -134,10 +137,15 @@ def delete_plano(plano_id: int) -> bool:
     return True
 
 
-def update_status(plano_id: int, status: str) -> dict:
+def update_status(plano_id: int, status: str, etapa_atual: str = None) -> dict:
     """
-    Atualiza apenas o status de um plano (ex: ao iniciar/concluir uma execução
-    do pipeline). Não passa pelas validações completas do payload.
+    Atualiza apenas o status (e opcionalmente a etapa atual) de um plano —
+    usado pelo orquestrador para refletir o progresso da execução sem passar
+    pelas validações completas do payload.
+
+    etapa_atual é uma string livre descrevendo a etapa em andamento
+    (ex: "RAIS 2022", "CAGED 2026", "Validação", "Consolidação").
+    Quando status não é "running", etapa_atual é limpa automaticamente.
     """
     status = str(status or "").strip().lower()
     if status not in STATUS_VALIDOS:
@@ -149,5 +157,6 @@ def update_status(plano_id: int, status: str) -> dict:
         raise PlanoValidationError("Plano não encontrado.")
 
     existing["status"] = status
+    existing["etapa_atual"] = etapa_atual if status == "running" else None
     write_json(DATA_PATH, items)
     return existing

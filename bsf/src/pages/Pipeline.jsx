@@ -2,35 +2,23 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import styles from './Pipeline.module.css';
 import { planosApi } from '../api/planos';
 import { cnaesApi } from '../api/cnaes';
+import { pipelineApi } from '../api/pipeline';
 
 /* ─── helpers ────────────────────────────────────────────── */
-const fmtDate = (iso) => {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleString('pt-BR', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
-};
-
 const fmtNum = (n) =>
   n == null ? '—' : (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
 
 const STATUS_LABEL = { done: 'Concluído', idle: 'Aguardando', error: 'Erro', running: 'Em execução' };
 
-/* mock log lines — simulação visual da execução, até o pipeline real existir */
-const buildLogs = (plano, incremental) => [
-  { t: 0,    type: 'info',    msg: `Iniciando ${incremental ? 'atualização incremental' : 'execução completa'}: ${plano.nome}` },
-  { t: 400,  type: 'info',    msg: `Carregando ${plano.cnaes.length} CNAE(s) configurado(s)` },
-  { t: 900,  type: 'info',    msg: `Carregando ${plano.municipios.length} município(s) no escopo` },
-  { t: 1500, type: 'success', msg: 'Conexão com fonte de dados estabelecida' },
-  { t: 2200, type: 'info',    msg: incremental ? 'Modo incremental: buscando registros após última execução' : 'Modo completo: varrendo base inteira' },
-  { t: 3100, type: 'info',    msg: `Processando lote 1/3 — filtrando por CNAE...` },
-  { t: 4200, type: 'info',    msg: `Processando lote 2/3 — cruzando municípios...` },
-  { t: 5300, type: 'info',    msg: `Processando lote 3/3 — deduplicando registros...` },
-  { t: 6100, type: 'success', msg: 'Registros únicos encontrados' },
-  { t: 6800, type: 'success', msg: 'Resultados gravados com sucesso' },
-  { t: 7200, type: 'success', msg: `✓ Pipeline concluído` },
-];
+const POLL_INTERVAL_MS = 1500;
+
+/* classifica a linha de log para colorir (apenas pelo conteúdo do texto,
+   já que o backend manda texto puro, sem type estruturado) */
+const classifyLog = (msg) => {
+  if (msg.startsWith('✅') || msg.startsWith('✓') || msg.includes('FINALIZADO COM SUCESSO')) return 'success';
+  if (msg.startsWith('❌') || msg.startsWith('⛔') || msg.toUpperCase().includes('ERRO')) return 'error';
+  return 'info';
+};
 
 /* ─── component ──────────────────────────────────────────── */
 export default function Pipeline() {
@@ -40,11 +28,14 @@ export default function Pipeline() {
   const [cnaesCatalogo, setCnaesCatalogo] = useState([]);
 
   const [selectedId, setSelectedId]   = useState(null);
-  const [running, setRunning]         = useState(false);
-  const [progress, setProgress]       = useState(0);
   const [logs, setLogs]               = useState([]);
-  const [runMode, setRunMode]         = useState(null); // 'full' | 'incremental'
+  const [rodando, setRodando]         = useState(false);
+  const [actionError, setActionError] = useState('');
+  const [starting, setStarting]       = useState(null); // 'full' | 'update' | null
+
   const logRef = useRef(null);
+  const cursorRef = useRef(0);
+  const pollTimerRef = useRef(null);
 
   /* ── carregar planos e catálogo de CNAEs do backend ── */
   const loadData = useCallback(async () => {
@@ -53,7 +44,7 @@ export default function Pipeline() {
     try {
       const [planosData, cnaesData] = await Promise.all([
         planosApi.list(),
-        cnaesApi.list().catch(() => []), // catálogo é só para enriquecer a exibição; não bloqueia a tela
+        cnaesApi.list().catch(() => []),
       ]);
       setPlanos(planosData);
       setCnaesCatalogo(cnaesData);
@@ -84,31 +75,102 @@ export default function Pipeline() {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [logs]);
 
-  const startRun = (incremental = false) => {
-    if (!plano) return;
-    setRunning(true);
-    setProgress(0);
+  /* ── polling de logs + status enquanto uma execução está rodando ── */
+  const poll = useCallback(async (planoId) => {
+    try {
+      const resultado = await pipelineApi.logs(planoId, cursorRef.current);
+      if (resultado.logs.length > 0) {
+        setLogs(prev => [...prev, ...resultado.logs]);
+      }
+      cursorRef.current = resultado.total;
+      setRodando(resultado.rodando);
+
+      if (resultado.rodando) {
+        pollTimerRef.current = setTimeout(() => poll(planoId), POLL_INTERVAL_MS);
+      } else {
+        // execução terminou (ou nunca rodou) — atualiza o plano para refletir status final
+        const planoAtualizado = await planosApi.list();
+        setPlanos(planoAtualizado);
+      }
+    } catch {
+      // erro de rede no polling não deve travar a tela — tenta de novo no próximo ciclo
+      pollTimerRef.current = setTimeout(() => poll(planoId), POLL_INTERVAL_MS);
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => { if (pollTimerRef.current) clearTimeout(pollTimerRef.current); };
+  }, []);
+
+  /* ── ao montar ou trocar de plano: se já houver uma execução em
+     andamento para ele, recupera o histórico de log e retoma o polling.
+     Se não estiver rodando, a tela simplesmente começa vazia. ── */
+  useEffect(() => {
+    if (!selectedId) return;
+
+    let cancelado = false;
+
+    (async () => {
+      try {
+        const { rodando: estaRodando } = await pipelineApi.status(selectedId);
+        if (cancelado) return;
+
+        if (estaRodando) {
+          setRodando(true);
+          cursorRef.current = 0;
+          setLogs([]);
+          poll(selectedId);
+        }
+      } catch {
+        // se a checagem falhar, mantém o comportamento padrão (tela vazia)
+      }
+    })();
+
+    return () => { cancelado = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+
+  const trocarPlano = (id) => {
+    if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    setSelectedId(id);
     setLogs([]);
-    setRunMode(incremental ? 'incremental' : 'full');
-
-    const lines = buildLogs(plano, incremental);
-    const total = lines[lines.length - 1].t + 500;
-
-    lines.forEach(({ t, type, msg }) => {
-      setTimeout(() => {
-        const ts = new Date().toLocaleTimeString('pt-BR');
-        setLogs(prev => [...prev, { type, msg, ts }]);
-        setProgress(Math.round(((t + 500) / total) * 100));
-      }, t);
-    });
-
-    setTimeout(() => {
-      setRunning(false);
-      setProgress(100);
-    }, total);
+    setRodando(false);
+    setActionError('');
+    cursorRef.current = 0;
   };
 
-  const clearLogs = () => { setLogs([]); setProgress(0); setRunMode(null); };
+  const startRun = async (modo) => {
+    if (!plano) return;
+    setActionError('');
+    setStarting(modo);
+    setLogs([]);
+    cursorRef.current = 0;
+
+    try {
+      if (modo === 'full') {
+        await pipelineApi.executar(plano.id);
+      } else {
+        await pipelineApi.atualizar(plano.id);
+      }
+      setRodando(true);
+      poll(plano.id);
+    } catch (e) {
+      setActionError(e.message);
+    } finally {
+      setStarting(null);
+    }
+  };
+
+  const handleParar = async () => {
+    if (!plano) return;
+    try {
+      await pipelineApi.parar(plano.id);
+    } catch (e) {
+      setActionError(e.message);
+    }
+  };
+
+  const clearLogs = () => { setLogs([]); cursorRef.current = 0; };
 
   return (
     <div className={styles.page}>
@@ -156,8 +218,8 @@ export default function Pipeline() {
                     id="plano-select"
                     className={styles.select}
                     value={selectedId ?? ''}
-                    onChange={e => { setSelectedId(Number(e.target.value)); clearLogs(); }}
-                    disabled={running}
+                    onChange={e => trocarPlano(Number(e.target.value))}
+                    disabled={rodando}
                   >
                     {planos.map(p => (
                       <option key={p.id} value={p.id}>{p.nome}</option>
@@ -166,43 +228,51 @@ export default function Pipeline() {
                   <i className="ti ti-chevron-down" aria-hidden="true" />
                 </div>
 
-                <div className={styles.actions}>
-                  <button
-                    className={`${styles.btnPrimary} ${running ? styles.btnDisabled : ''}`}
-                    onClick={() => startRun(false)}
-                    disabled={running}
-                  >
-                    {running && runMode === 'full'
-                      ? <><span className={styles.spinner} /> Executando...</>
-                      : <><i className="ti ti-player-play" aria-hidden="true" /> Executar pipeline</>
-                    }
-                  </button>
-                  <button
-                    className={`${styles.btnSecondary} ${running ? styles.btnDisabled : ''}`}
-                    onClick={() => startRun(true)}
-                    disabled={running}
-                    title="Processa apenas registros novos desde a última execução"
-                  >
-                    {running && runMode === 'incremental'
-                      ? <><span className={styles.spinnerSm} /> Atualizando...</>
-                      : <><i className="ti ti-refresh" aria-hidden="true" /> Atualização incremental</>
-                    }
-                  </button>
-                </div>
+                {rodando ? (
+                  <div className={styles.actions}>
+                    <button className={styles.btnStop} onClick={handleParar}>
+                      <i className="ti ti-player-stop" aria-hidden="true" /> Parar execução
+                    </button>
+                  </div>
+                ) : (
+                  <div className={styles.actions}>
+                    <button
+                      className={styles.btnPrimary}
+                      onClick={() => startRun('full')}
+                      disabled={starting !== null}
+                    >
+                      {starting === 'full'
+                        ? <><span className={styles.spinner} /> Iniciando...</>
+                        : <><i className="ti ti-player-play" aria-hidden="true" /> Executar pipeline</>
+                      }
+                    </button>
+                    <button
+                      className={styles.btnSecondary}
+                      onClick={() => startRun('update')}
+                      disabled={starting !== null}
+                      title="Processa apenas o CAGED mais recente, sem reprocessar a RAIS"
+                    >
+                      {starting === 'update'
+                        ? <><span className={styles.spinnerSm} /> Iniciando...</>
+                        : <><i className="ti ti-refresh" aria-hidden="true" /> Atualização incremental</>
+                      }
+                    </button>
+                  </div>
+                )}
 
-                {(running || progress > 0) && (
+                {actionError && (
+                  <div className={styles.actionError}>
+                    <i className="ti ti-alert-circle" aria-hidden="true" /> {actionError}
+                  </div>
+                )}
+
+                {(rodando || plano?.status === 'running') && (
                   <div className={styles.progressWrap}>
                     <div className={styles.progressHeader}>
                       <span className={styles.progressLabel}>
-                        {running ? (runMode === 'incremental' ? 'Atualizando...' : 'Executando...') : 'Concluído'}
+                        <span className={styles.liveDot} aria-hidden="true" />
+                        {plano?.etapa_atual ? `Executando — ${plano.etapa_atual}` : 'Executando...'}
                       </span>
-                      <span className={styles.progressPct}>{progress}%</span>
-                    </div>
-                    <div className={styles.progressTrack}>
-                      <div
-                        className={`${styles.progressFill} ${!running && progress === 100 ? styles.progressDone : ''}`}
-                        style={{ width: `${progress}%` }}
-                      />
                     </div>
                   </div>
                 )}
@@ -233,32 +303,7 @@ export default function Pipeline() {
                 </div>
                 <div className={styles.infoItem}>
                   <span className={styles.infoLabel}>Municípios</span>
-                  <span className={styles.infoVal}>{plano.municipios.length}</span>
-                </div>
-                <div className={styles.infoItem}>
-                  <span className={styles.infoLabel}>Registros</span>
-                  <span className={styles.infoVal}>{fmtNum(plano.registros)}</span>
-                </div>
-                <div className={styles.infoItem}>
-                  <span className={styles.infoLabel}>Duração média</span>
-                  <span className={styles.infoVal}>{plano.duracaoMedia ?? '—'}</span>
-                </div>
-              </div>
-
-              <div className={styles.divider} />
-
-              <div className={styles.metaRow}>
-                <i className="ti ti-clock" aria-hidden="true" />
-                <div>
-                  <span className={styles.metaLabel}>Última execução</span>
-                  <span className={styles.metaVal}>{fmtDate(plano.ultimaExecucao)}</span>
-                </div>
-              </div>
-              <div className={styles.metaRow}>
-                <i className="ti ti-calendar" aria-hidden="true" />
-                <div>
-                  <span className={styles.metaLabel}>Criado em</span>
-                  <span className={styles.metaVal}>{plano.criadoEm ? new Date(plano.criadoEm).toLocaleDateString('pt-BR') : '—'}</span>
+                  <span className={styles.infoVal}>{fmtNum(plano.municipios.length)}</span>
                 </div>
               </div>
 
@@ -289,7 +334,7 @@ export default function Pipeline() {
               <span className={styles.cardTitle}>Log de execução</span>
               <div style={{ display: 'flex', gap: 8 }}>
                 {logs.length > 0 && (
-                  <button className={styles.clearBtn} onClick={clearLogs} disabled={running}>
+                  <button className={styles.clearBtn} onClick={clearLogs} disabled={rodando}>
                     <i className="ti ti-trash" aria-hidden="true" /> Limpar
                   </button>
                 )}
@@ -304,15 +349,18 @@ export default function Pipeline() {
                   <span>Selecione um plano e execute o pipeline para visualizar os logs.</span>
                 </div>
               ) : (
-                logs.map((line, i) => (
-                  <div key={i} className={`${styles.logLine} ${styles['log_' + line.type]}`}>
-                    <span className={styles.logTs}>{line.ts}</span>
-                    <span className={styles.logType}>{line.type === 'success' ? '✓' : line.type === 'error' ? '✗' : '›'}</span>
-                    <span className={styles.logMsg}>{line.msg}</span>
-                  </div>
-                ))
+                logs.map((line, i) => {
+                  const type = classifyLog(line.msg);
+                  return (
+                    <div key={i} className={`${styles.logLine} ${styles['log_' + type]}`}>
+                      <span className={styles.logTs}>{new Date(line.ts * 1000).toLocaleTimeString('pt-BR')}</span>
+                      <span className={styles.logType}>{type === 'success' ? '✓' : type === 'error' ? '✗' : '›'}</span>
+                      <span className={styles.logMsg}>{line.msg}</span>
+                    </div>
+                  );
+                })
               )}
-              {running && (
+              {rodando && (
                 <div className={styles.logCursor}>
                   <span className={styles.cursorDot} />
                   <span className={styles.cursorDot} />

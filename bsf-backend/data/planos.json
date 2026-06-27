@@ -378,7 +378,8 @@
     "municipios": [
       "431440"
     ],
-    "status": "idle"
+    "status": "done",
+    "etapa_atual": null
   },
   {
     "id": 3,
@@ -429,7 +430,8 @@
       "432320",
       "432340"
     ],
-    "status": "idle"
+    "status": "done",
+    "etapa_atual": null
   },
   {
     "id": 4,
@@ -460,7 +462,8 @@
       "431990",
       "432000"
     ],
-    "status": "idle"
+    "status": "done",
+    "etapa_atual": null
   },
   {
     "id": 5,
@@ -483,7 +486,8 @@
     "municipios": [
       "431690"
     ],
-    "status": "idle"
+    "status": "done",
+    "etapa_atual": null
   },
   {
     "id": 6,
@@ -567,7 +571,8 @@
       "432285",
       "432377"
     ],
-    "status": "idle"
+    "status": "done",
+    "etapa_atual": null
   },
   {
     "id": 7,
@@ -621,7 +626,8 @@
       "432280",
       "432350"
     ],
-    "status": "idle"
+    "status": "done",
+    "etapa_atual": null
   },
   {
     "id": 8,
@@ -641,7 +647,8 @@
       "431240",
       "432200"
     ],
-    "status": "idle"
+    "status": "done",
+    "etapa_atual": null
   },
   {
     "id": 9,
@@ -4420,5 +4427,19 @@
       "355730"
     ],
     "status": "idle"
+  },
+  {
+    "id": 54,
+    "etapa_atual": null,
+    "nome": "COMERCIÁRIOS - AÇOUGUES",
+    "regiao": "Sudeste",
+    "estado": "SP",
+    "cnaes": [
+      "4722901"
+    ],
+    "municipios": [
+      "355030"
+    ],
+    "status": "done"
   }
 ]

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import styles from './Resultados.module.css';
 import { planosApi } from '../api/planos';
 import { resultadosApi } from '../api/resultados';
@@ -21,9 +21,19 @@ const fmtDate = (epochSeconds) => {
 
 const STATUS_LABEL = { done: 'Concluído', idle: 'Aguardando', error: 'Erro', running: 'Em execução' };
 
+function Toast({ message, type = 'success' }) {
+  return (
+    <div className={`${styles.toast} ${styles['toast_' + type]}`}>
+      <i className={`ti ${type === 'success' ? 'ti-check' : 'ti-alert-triangle'}`} aria-hidden="true" />
+      {message}
+    </div>
+  );
+}
+
 const FILE_META = {
   'rais_caged.csv':   { icon: 'ti-file-spreadsheet', desc: 'Base completa, separada por vírgula' },
   'rais_caged_t.csv': { icon: 'ti-file-spreadsheet', desc: 'Base completa, separada por tabulação' },
+  'dados_setor.csv':  { icon: 'ti-building-factory-2', desc: 'Uma linha por CNPJ — alimenta a aba Dados do Setor' },
 };
 
 /* ─── component ──────────────────────────────────────────── */
@@ -36,6 +46,14 @@ export default function Resultados() {
   const [arquivos, setArquivos]            = useState([]);
   const [loadingArquivos, setLoadingArquivos] = useState(false);
   const [arquivosError, setArquivosError]  = useState('');
+  const [uploading, setUploading]          = useState(false);
+  const [toast, setToast]                  = useState(null);
+  const fileInputRef = useRef(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   /* ── carregar planos do backend ── */
   const loadPlanos = useCallback(async () => {
@@ -76,6 +94,23 @@ export default function Resultados() {
   useEffect(() => {
     if (plano) loadArquivos(plano.nome);
   }, [plano, loadArquivos]);
+
+  const handleUploadDadosSetor = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !plano) return;
+
+    setUploading(true);
+    try {
+      await resultadosApi.upload(plano.nome, 'dados_setor.csv', file);
+      showToast('Arquivo de dados do setor enviado com sucesso.');
+      await loadArquivos(plano.nome);
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <div className={styles.page}>
@@ -167,11 +202,33 @@ export default function Resultados() {
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <span className={styles.cardTitle}>Arquivos disponíveis</span>
-              {arquivos.length > 0 && (
-                <button className={styles.refreshBtn} onClick={() => loadArquivos(plano.nome)} title="Atualizar lista">
-                  <i className="ti ti-refresh" aria-hidden="true" />
-                </button>
-              )}
+              <div className={styles.cardHeaderActions}>
+                {plano && (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".csv"
+                      style={{ display: 'none' }}
+                      onChange={handleUploadDadosSetor}
+                    />
+                    <button
+                      className={styles.uploadBtn}
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      title="Enviar dados_setor.csv (uma linha por CNPJ, para a aba Dados do Setor)"
+                    >
+                      <i className={`ti ${uploading ? 'ti-loader-2' : 'ti-upload'}`} aria-hidden="true" />
+                      {uploading ? 'Enviando...' : 'Enviar dados do setor'}
+                    </button>
+                  </>
+                )}
+                {arquivos.length > 0 && (
+                  <button className={styles.refreshBtn} onClick={() => loadArquivos(plano.nome)} title="Atualizar lista">
+                    <i className="ti ti-refresh" aria-hidden="true" />
+                  </button>
+                )}
+              </div>
             </div>
 
             {!plano ? (
@@ -232,6 +289,8 @@ export default function Resultados() {
           </div>
         </div>
       </div>
+
+      {toast && <Toast message={toast.message} type={toast.type} />}
     </div>
   );
 }

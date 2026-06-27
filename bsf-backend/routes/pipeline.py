@@ -6,6 +6,7 @@ Rotas REST para execução do pipeline (orquestrador).
   POST /api/pipeline/parar/<plano_id>      -> solicita interrupção
   GET  /api/pipeline/logs/<plano_id>?desde=N -> logs novos desde o índice N
   GET  /api/pipeline/status/<plano_id>     -> está rodando ou não
+  GET  /api/pipeline/historico?plano=<id>&limite=N -> histórico de execuções
 
 A execução em si roda em background (thread) — estas rotas retornam
 imediatamente. O acompanhamento é feito via polling em /logs e
@@ -19,6 +20,7 @@ from services.orquestrador_service import (
     obter_logs,
     solicitar_parada,
 )
+from services.execucao_service import listar_execucoes
 
 pipeline_bp = Blueprint("pipeline", __name__)
 
@@ -64,3 +66,10 @@ def logs(plano_id):
 @pipeline_bp.get("/status/<int:plano_id>")
 def status(plano_id):
     return jsonify({"rodando": esta_rodando(plano_id)})
+
+
+@pipeline_bp.get("/historico")
+def historico():
+    plano_id = request.args.get("plano", type=int)
+    limite = request.args.get("limite", type=int)
+    return jsonify(listar_execucoes(plano_id, limite))

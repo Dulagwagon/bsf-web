@@ -273,7 +273,7 @@
 .status_running { background: #1e1508;           color: var(--gold); }
 
 .planName {
-  font-family: var(--font-display);
+  font-family: var(--font-ui);
   font-size: 22px;
   font-weight: 400;
   color: var(--text-primary);
@@ -315,7 +315,7 @@
 }
 
 .infoVal {
-  font-family: var(--font-display);
+  font-family: var(--font-ui);
   font-size: 22px;
   font-weight: 600;
   color: var(--gold);

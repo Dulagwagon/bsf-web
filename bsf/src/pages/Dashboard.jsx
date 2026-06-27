@@ -4,6 +4,7 @@ import ThemeToggle from '../components/ThemeToggle';
 import { planosApi } from '../api/planos';
 import { cnaesApi } from '../api/cnaes';
 import { municipiosApi } from '../api/municipios';
+import { pipelineApi } from '../api/pipeline';
 
 /* ── helpers ──────────────────────────────────────────────── */
 const fmt = (n) =>
@@ -13,6 +14,26 @@ const today = () =>
   new Date().toLocaleDateString('pt-BR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
+
+const fmtRelativo = (epochSeconds) => {
+  if (!epochSeconds) return '—';
+  const diffMs = Date.now() - epochSeconds * 1000;
+  const min = Math.floor(diffMs / 60000);
+  if (min < 1) return 'agora mesmo';
+  if (min < 60) return `${min} min atrás`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h}h atrás`;
+  const d = Math.floor(h / 24);
+  return `${d}d atrás`;
+};
+
+const fmtDuracao = (segundos) => {
+  if (segundos == null) return '—';
+  if (segundos < 60) return `${Math.round(segundos)}s`;
+  const min = Math.floor(segundos / 60);
+  const s = Math.round(segundos % 60);
+  return `${min}m ${s}s`;
+};
 
 /* ── sub-components ───────────────────────────────────────── */
 function MetricCard({ label, value, sub, accent }) {
@@ -81,6 +102,36 @@ function EmptyBlock({ icon, children }) {
   );
 }
 
+const EXEC_STATUS_MAP = {
+  done:    { icon: 'ti-check',          cls: styles.execDone,    label: 'Concluída' },
+  error:   { icon: 'ti-alert-triangle', cls: styles.execError,   label: 'Erro' },
+  idle:    { icon: 'ti-player-stop',    cls: styles.execStopped, label: 'Interrompida' },
+  running: { icon: 'ti-loader-2',       cls: styles.execRunning, label: 'Em execução' },
+};
+
+function ExecucaoItem({ execucao }) {
+  const s = EXEC_STATUS_MAP[execucao.status] ?? EXEC_STATUS_MAP.idle;
+  return (
+    <div className={styles.execItem}>
+      <div className={`${styles.execIcon} ${s.cls}`}>
+        <i className={`ti ${s.icon}`} aria-hidden="true" />
+      </div>
+      <div className={styles.execInfo}>
+        <div className={styles.execName}>
+          {execucao.planoNome}
+          <span className={styles.execMode}>{execucao.modo === 'update' ? 'incremental' : 'completa'}</span>
+        </div>
+        <div className={styles.execMeta}>
+          {s.label}
+          {execucao.status === 'done' && execucao.registros != null && ` · ${fmt(execucao.registros)} registros`}
+          {execucao.duracaoSegundos != null && ` · ${fmtDuracao(execucao.duracaoSegundos)}`}
+        </div>
+      </div>
+      <span className={styles.execTime}>{fmtRelativo(execucao.iniciadoEm)}</span>
+    </div>
+  );
+}
+
 /* ── page ─────────────────────────────────────────────────── */
 export default function Dashboard({ onRunPipeline, theme, onToggleTheme }) {
   const [planos, setPlanos]         = useState([]);
@@ -89,6 +140,8 @@ export default function Dashboard({ onRunPipeline, theme, onToggleTheme }) {
   const [loading, setLoading]       = useState(true);
   const [loadError, setLoadError]   = useState('');
   const [statusSearch, setStatusSearch] = useState('');
+  const [execucoes, setExecucoes]   = useState([]);
+  const [loadingExec, setLoadingExec] = useState(true);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -110,6 +163,20 @@ export default function Dashboard({ onRunPipeline, theme, onToggleTheme }) {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  const loadExecucoes = useCallback(async () => {
+    setLoadingExec(true);
+    try {
+      const data = await pipelineApi.historico({ limite: 50 });
+      setExecucoes(data);
+    } catch {
+      setExecucoes([]);
+    } finally {
+      setLoadingExec(false);
+    }
+  }, []);
+
+  useEffect(() => { loadExecucoes(); }, [loadExecucoes]);
 
   /* ── métricas derivadas dos planos reais ── */
   const stats = useMemo(() => {
@@ -144,6 +211,18 @@ export default function Dashboard({ onRunPipeline, theme, onToggleTheme }) {
     const q = statusSearch.trim().toLowerCase();
     return planos.filter(p => p.nome.toLowerCase().includes(q));
   }, [planos, statusSearch]);
+
+  /* soma os registros da execução mais recente de cada plano (apenas concluídas) */
+  const totalRegistros = useMemo(() => {
+    const maisRecentePorPlano = new Map();
+    execucoes
+      .filter(e => e.status === 'done' && e.registros != null)
+      .forEach(e => {
+        if (!maisRecentePorPlano.has(e.planoId)) maisRecentePorPlano.set(e.planoId, e.registros);
+      });
+    if (maisRecentePorPlano.size === 0) return null;
+    return [...maisRecentePorPlano.values()].reduce((a, b) => a + b, 0);
+  }, [execucoes]);
 
   const coveragePct = (value, total) => {
     if (!total) return 0;
@@ -204,8 +283,8 @@ export default function Dashboard({ onRunPipeline, theme, onToggleTheme }) {
           />
           <MetricCard
             label="Registros filtrados"
-            value="—"
-            sub="disponível após executar o pipeline"
+            value={loadingExec ? '—' : (totalRegistros != null ? fmt(totalRegistros) : '—')}
+            sub={totalRegistros == null ? 'disponível após executar o pipeline' : 'soma da última execução de cada plano'}
             accent="muted"
           />
         </div>
@@ -286,11 +365,19 @@ export default function Dashboard({ onRunPipeline, theme, onToggleTheme }) {
         <div className={styles.grid2}>
           <div className={styles.card}>
             <div className={styles.cardHeader}>
-              <span className={styles.cardTitle}>Execuções</span>
+              <span className={styles.cardTitle}>Execuções recentes</span>
             </div>
-            <EmptyBlock icon="ti-chart-bar">
-              Histórico de execuções estará disponível quando o pipeline for conectado.
-            </EmptyBlock>
+            {loadingExec ? (
+              <EmptyBlock icon="ti-loader-2">Carregando...</EmptyBlock>
+            ) : execucoes.length === 0 ? (
+              <EmptyBlock icon="ti-history">Nenhuma execução registrada ainda. Execute um plano na tela Pipeline.</EmptyBlock>
+            ) : (
+              <div className={styles.execList}>
+                {execucoes.slice(0, 8).map(e => (
+                  <ExecucaoItem key={e.id} execucao={e} />
+                ))}
+              </div>
+            )}
           </div>
 
           <div className={styles.card}>

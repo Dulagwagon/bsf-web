@@ -17,6 +17,8 @@ import traceback
 from orquestrador.pipeline_runner import executar_full, executar_update
 from services.cnae_service import list_cnaes
 from services.plano_service import get_plano, update_status
+from services.execucao_service import registrar_inicio, registrar_fim
+from services.resultado_service import slugify
 
 # Estado em memória por plano_id:
 # {
@@ -35,15 +37,21 @@ def _get_execucao(plano_id: int) -> dict:
         return _execucoes[plano_id]
 
 
+MAX_LOGS_POR_PLANO = 2000
+LINHAS_POR_CHAMADA = 500  # protege contra uma única mensagem com milhares de linhas
+
+
 def _registrar_log(plano_id: int, msg: str):
     execucao = _get_execucao(plano_id)
-    for linha in str(msg).split("\n"):
+    linhas = str(msg).split("\n")[:LINHAS_POR_CHAMADA]
+    for linha in linhas:
         if linha.strip() == "":
             continue
         execucao["logs"].append({"ts": time.time(), "msg": linha})
-    # evita crescimento infinito em execuções muito longas
-    if len(execucao["logs"]) > 2000:
-        del execucao["logs"][:500]
+        # corta durante o append, não só depois — evita que uma única
+        # chamada com muitas linhas infle a lista muito além do limite
+        if len(execucao["logs"]) > MAX_LOGS_POR_PLANO:
+            del execucao["logs"][0]
 
 
 def obter_logs(plano_id: int, desde: int = 0) -> dict:
@@ -96,6 +104,7 @@ def _run_in_thread(plano_id: int, modo: str):
         return
 
     catalogo_cnaes = list_cnaes()
+    execucao_hist_id = registrar_inicio(plano_id, plano["nome"], modo)
 
     try:
         update_status(plano_id, "running", "Iniciando")
@@ -107,12 +116,15 @@ def _run_in_thread(plano_id: int, modo: str):
 
         if resultado.get("interrompido"):
             update_status(plano_id, "idle")
+            registrar_fim(execucao_hist_id, "idle")
         else:
             update_status(plano_id, "done")
+            registrar_fim(execucao_hist_id, "done", plano["nome"], slugify)
 
     except Exception as e:
         _registrar_log(plano_id, f"❌ ERRO: {e}")
         _registrar_log(plano_id, traceback.format_exc())
+        registrar_fim(execucao_hist_id, "error")
         try:
             update_status(plano_id, "error")
         except Exception:

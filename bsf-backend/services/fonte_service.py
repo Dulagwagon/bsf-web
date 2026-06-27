@@ -111,6 +111,23 @@ def listar_fontes() -> dict:
     return {"rais": listar_fontes_rais(), "caged": listar_fontes_caged()}
 
 
+def caged_mais_recente_disponivel():
+    """
+    Retorna (ano, mes) do arquivo CAGED mais recente que existe em disco
+    (.txt ou .parquet), varrendo ANOS_CAGED x MESES_CAGED em ordem
+    decrescente. Usado para exibir "Atualização dos Dados" nos Painéis —
+    representa até onde a fonte de dados está alimentada, independente
+    de qual plano está sendo visualizado.
+
+    Retorna None se nenhum arquivo CAGED existir ainda.
+    """
+    for ano in sorted(ANOS_CAGED, reverse=True):
+        for mes in sorted(MESES_CAGED, reverse=True):
+            if os.path.isfile(caminho_caged(ano, mes, "txt")) or os.path.isfile(caminho_caged(ano, mes, "parquet")):
+                return {"ano": ano, "mes": mes}
+    return None
+
+
 # =========================
 # CONVERSÃO .txt -> .parquet
 # =========================

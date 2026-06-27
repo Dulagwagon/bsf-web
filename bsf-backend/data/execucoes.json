@@ -1,0 +1,68 @@
+[
+  {
+    "id": 1,
+    "planoId": 4,
+    "planoNome": "131 - SINDASSEIO",
+    "modo": "full",
+    "status": "done",
+    "iniciadoEm": 1782490375.6943493,
+    "finalizadoEm": 1782490405.8107817,
+    "duracaoSegundos": 30.1,
+    "registros": 11
+  },
+  {
+    "id": 2,
+    "planoId": 5,
+    "planoNome": "132 - FEEAC",
+    "modo": "full",
+    "status": "done",
+    "iniciadoEm": 1782502865.8537905,
+    "finalizadoEm": 1782502894.7317715,
+    "duracaoSegundos": 28.9,
+    "registros": 11
+  },
+  {
+    "id": 3,
+    "planoId": 6,
+    "planoNome": "133 - FEEAC",
+    "modo": "full",
+    "status": "done",
+    "iniciadoEm": 1782502936.0732985,
+    "finalizadoEm": 1782502954.1231759,
+    "duracaoSegundos": 18.0,
+    "registros": 11
+  },
+  {
+    "id": 4,
+    "planoId": 7,
+    "planoNome": "134 - FEEAC",
+    "modo": "full",
+    "status": "done",
+    "iniciadoEm": 1782508460.5224197,
+    "finalizadoEm": 1782508494.0772254,
+    "duracaoSegundos": 33.6,
+    "registros": 11
+  },
+  {
+    "id": 5,
+    "planoId": 8,
+    "planoNome": "141 - FEEAC",
+    "modo": "full",
+    "status": "done",
+    "iniciadoEm": 1782508627.6476958,
+    "finalizadoEm": 1782508652.4207428,
+    "duracaoSegundos": 24.8,
+    "registros": 4
+  },
+  {
+    "id": 6,
+    "planoId": 54,
+    "planoNome": "COMERCIÁRIOS - AÇOUGUES",
+    "modo": "full",
+    "status": "done",
+    "iniciadoEm": 1782511372.8888845,
+    "finalizadoEm": 1782511431.603372,
+    "duracaoSegundos": 58.7,
+    "registros": 1
+  }
+]

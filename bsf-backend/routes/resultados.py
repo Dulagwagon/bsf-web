@@ -1,15 +1,21 @@
 """
 Rotas REST para o recurso Resultados.
 
-  GET /api/resultados?plano=<nome_do_plano>           -> lista arquivos disponíveis
-  GET /api/resultados/download?plano=<nome>&arquivo=<x> -> baixa um arquivo específico
+  GET  /api/resultados?plano=<nome_do_plano>           -> lista arquivos disponíveis
+  GET  /api/resultados/download?plano=<nome>&arquivo=<x> -> baixa um arquivo específico
+  POST /api/resultados/upload?plano=<nome>&arquivo=<x>   -> envia um arquivo (ex: dados_setor.csv)
 
 O nome do plano é usado (via slug) para localizar a pasta de outputs
 gerada pelo orquestrador. Veja services/resultado_service.py.
 """
 from flask import Blueprint, jsonify, request, send_file
 
-from services.resultado_service import get_resultado_path, list_resultados
+from services.resultado_service import (
+    ResultadoError,
+    get_resultado_path,
+    list_resultados,
+    salvar_upload,
+)
 
 resultados_bp = Blueprint("resultados", __name__)
 
@@ -35,3 +41,21 @@ def download():
         return jsonify({"error": "Arquivo não encontrado."}), 404
 
     return send_file(filepath, as_attachment=True, download_name=filename)
+
+
+@resultados_bp.post("/upload")
+def upload():
+    nome_plano = request.args.get("plano", "")
+    filename = request.args.get("arquivo", "")
+
+    if not nome_plano or not filename:
+        return jsonify({"error": "Parâmetros 'plano' e 'arquivo' são obrigatórios."}), 400
+
+    if "file" not in request.files:
+        return jsonify({"error": "Nenhum arquivo enviado."}), 400
+
+    try:
+        resultado = salvar_upload(nome_plano, filename, request.files["file"])
+        return jsonify(resultado), 201
+    except ResultadoError as e:
+        return jsonify({"error": e.message}), 400
